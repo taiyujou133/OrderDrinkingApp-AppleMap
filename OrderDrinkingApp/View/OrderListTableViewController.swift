@@ -12,11 +12,6 @@ class OrderListTableViewController: UITableViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        
-        let controller = UIAlertController(title: "使用通知", message: "點選訂單，可進入修改刪除頁面", preferredStyle: .alert)
-        let okAction = UIAlertAction(title: "好的", style: .default)
-        controller.addAction(okAction)
-        self.present(controller, animated: true)
 
         fetchOrderInfoList()
     }
@@ -42,9 +37,21 @@ class OrderListTableViewController: UITableViewController {
                     formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSZ"
                     decoder.dateDecodingStrategy = .formatted(formatter)
                     let orderInfo = try decoder.decode(LoadOrderInfoList.self, from: data)
-                    self.loadOrderInfoList = []
-                    for i in 0...(orderInfo.records.count - 1){
-                        self.loadOrderInfoList.append(orderInfo.records[i])
+                    if orderInfo.records.count > 0 {
+                        self.loadOrderInfoList = []
+                        for i in 0...(orderInfo.records.count - 1){
+                            self.loadOrderInfoList.append(orderInfo.records[i])
+                        }
+                        
+                        let controller = UIAlertController(title: "使用通知", message: "點選訂單，可進入修改刪除頁面", preferredStyle: .alert)
+                        let okAction = UIAlertAction(title: "好的", style: .default)
+                        controller.addAction(okAction)
+                        self.present(controller, animated: true)
+                    } else {
+                        let controller = UIAlertController(title: "訊息通知", message: "目前尚無訂單", preferredStyle: .alert)
+                        let okAction = UIAlertAction(title: "好的", style: .default)
+                        controller.addAction(okAction)
+                        self.present(controller, animated: true)
                     }
                     DispatchQueue.main.async {
                         self.tableView.reloadData()
@@ -69,9 +76,10 @@ class OrderListTableViewController: UITableViewController {
         let sugarDegree = loadOrderInfoList[indexPath!].fields.sugarDegree
         let comment = loadOrderInfoList[indexPath!].fields.comment
         let price = Int(loadOrderInfoList[indexPath!].fields.price)
+        let storeName = loadOrderInfoList[indexPath!].fields.storeName
         
         let controller = UpdateOrderTableViewController(coder: coder)
-        controller?.updateOrderInfo = ChangeToUpdateOrderInfo(id: id, userName: userName, userPhone: userPhone, drinkingName: drinkingName, cupAmount: cupAmount, iceDegreen: iceDegree, sugarDegreen: sugarDegree, comment: comment, price: price)
+        controller?.updateOrderInfo = ChangeToUpdateOrderInfo(id: id, userName: userName, userPhone: userPhone, drinkingName: drinkingName, cupAmount: cupAmount, iceDegreen: iceDegree, sugarDegreen: sugarDegree, comment: comment, price: price, storeName: storeName)
         return controller
     }
     // MARK: - Table view data source
@@ -99,6 +107,8 @@ class OrderListTableViewController: UITableViewController {
         
         cell.orderInfoCommentTextView.text = loadOrderInfoList[indexPath.row].fields.comment
         
+        cell.orderInfoStoreNameLabel.text = loadOrderInfoList[indexPath.row].fields.storeName
+        
         cell.orderInfoUserNameLabel.clipsToBounds = true
         cell.orderInfoUserNameLabel.layer.cornerRadius = 5
         cell.orderInfoUserPhoneLabel.clipsToBounds = true
@@ -115,6 +125,8 @@ class OrderListTableViewController: UITableViewController {
         cell.orderInfoOrderTimeLabel.layer.cornerRadius = 5
         cell.orderInfoCommentTextView.clipsToBounds = true
         cell.orderInfoCommentTextView.layer.cornerRadius = 5
+        cell.orderInfoStoreNameLabel.clipsToBounds = true
+        cell.orderInfoStoreNameLabel.layer.cornerRadius = 5
     
         return cell
     }

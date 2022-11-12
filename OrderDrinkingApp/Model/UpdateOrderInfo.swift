@@ -21,5 +21,6 @@ struct UpdateOrderInfo: Codable {
         var userPhone: String
         var totalAmount: Int
         var updateTime: String
+        var storeName: String
     }
 }

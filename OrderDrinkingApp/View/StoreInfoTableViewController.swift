@@ -6,52 +6,51 @@
 //
 
 import UIKit
-import GoogleMaps
-//import GoogleMapsUtils
-//
-//class MyMaker: GMSMarker {
-//    let markerData: MarkerData // Raw data from server
-//
-//    init(markerData: MarkerData) {
-//        self.markerData = markerData
-//        super.init()
-//        self.title = markerData.title
-//        self.position = markerData.position
-//    }
-//}
-//
-//class ClusterItem: NSObject, GMUClusterItem {
-//    let markerData: MarkerData // Raw data from server
-//    let position: CLLocationCoordinate2D
-//
-//    init(markerData: MarkerData) {
-//        self.markerData = markerData
-//        self.position = markerData.position
-//    }
-//}
+import MapKit
+import CoreLocation     //使用得知位置函式庫
 
-class StoreInfoTableViewController: UITableViewController {
+class StoreInfoTableViewController: UITableViewController, CLLocationManagerDelegate {
     var storeInfo = [StoreInfo.StoreDetail]()
-    var storeMapInfo: [MarkerData] = []
-//    var clusterManager: GMUClusterManager!
+    var locationManger: CLLocationManager? //取得使用者位置使用變數
+    var lat: Double = 0
+    var lng: Double = 0
 
     override func viewDidLoad() {
         super.viewDidLoad()
-
-        fetchStoreInfo()
         
-//        MarkerData(position: CLLocationCoordinate2D(latitude: 25.033671, longitude: 121.564427), title: "Taiwan", snippet: "台北101")
-        
-//        for i in 0...(storeInfo.count - 1) {
-//            storeMapInfo.append(MarkerData(position: CLLocationCoordinate2D(latitude: self.storeInfo[i].geometry.location.lat, longitude: self.storeInfo[i].geometry.location.lng), title: "\(self.storeInfo[i].name)", snippet: "台灣"))
-//        }
-//
-//        self.iniMapViewMarker(storeMapInfo)
+        fetchUserLocation()
+//        fetchStoreInfo()
+    }
+    
+    func fetchUserLocation() {
+        //定位
+        locationManger = CLLocationManager() //指派locationManger取得CLLocationManager()功能
+        locationManger?.requestWhenInUseAuthorization() //尋求使用者是否授權APP得知位置
+        locationManger?.delegate = self //若是user有移動，可以將透過delegate知道位置顯示
+        locationManger?.desiredAccuracy = kCLLocationAccuracyBest //user位置追蹤精確程度，設置成最精確位置
+        locationManger?.activityType = .automotiveNavigation //設定使用者的位置模式，手機會去依照不同設定做不同的電力控制
+        locationManger?.startUpdatingLocation() //user有移動會啟動追蹤位置(CLLocationManagerDelegate)
 
+        //授權同意後取得使用者位置後指派給hereForNow
+        if let hereForNow = locationManger?.location?.coordinate {
+            let scaleForX: CLLocationDegrees = 0.01 //精度緯度設置為0.01
+            let scaleForY: CLLocationDegrees = 0.01
+
+            //指派span為MKCoordinateSpan後加入精度緯度的比例
+            let span: MKCoordinateSpan = MKCoordinateSpan(latitudeDelta: scaleForY, longitudeDelta: scaleForX)
+            //指派regineForNow為MKCoordinateRegion加入現在的user位置，顯示比例為span
+            let regineForNow = MKCoordinateRegion(center: hereForNow, span: span)
+            lat = regineForNow.center.latitude
+            lng = regineForNow.center.longitude
+            
+//            fetchStoreInfo(24.137459053030295, 120.68694266895422)
+        }
     }
     
     func fetchStoreInfo() {
-        let orgUrl = "https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=24.1374,120.6869&radius=1000&keyword=春水堂&language=zh-TW&key=AIzaSyDK7dj5GZheIWk_HSbF7Gv7AakP0Vvxro8"
+        fetchUserLocation()
+        
+        let orgUrl = "https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=\(lat),\(lng)&radius=1000&keyword=春水堂&language=zh-TW&key=AIzaSyDK7dj5GZheIWk_HSbF7Gv7AakP0Vvxro8"
         //網址有中文字，需進行編碼
         let strUrl = orgUrl.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)
         let request = URLRequest(url: URL(string: strUrl!)!)
@@ -60,12 +59,20 @@ class StoreInfoTableViewController: UITableViewController {
                 do {
                     let decoder = JSONDecoder()
                     let storeInfoDecode = try decoder.decode(StoreInfo.self, from: data)
-                    for i in 0...(storeInfoDecode.results.count - 1){
-                        self.storeInfo.append(storeInfoDecode.results[i])
-                    }
-//                    print(self.storeInfo)
-                    DispatchQueue.main.async {
-                        self.tableView.reloadData()
+                    self.storeInfo = []
+                    if storeInfoDecode.results.count != 0 {
+                        for i in 0...(storeInfoDecode.results.count - 1){
+                            self.storeInfo.append(storeInfoDecode.results[i])
+                        }
+                        DispatchQueue.main.async {
+                            self.tableView.reloadData()
+                        }
+                        if self.storeInfo.count == 0 {
+                            let controller = UIAlertController(title: "店家訊息通知", message: "您所在附近沒有店家", preferredStyle: .alert)
+                            let okAction = UIAlertAction(title: "好的", style: .default)
+                            controller.addAction(okAction)
+                            self.present(controller, animated: true)
+                        }
                     }
                 } catch {
                     print(error)
@@ -74,16 +81,21 @@ class StoreInfoTableViewController: UITableViewController {
         }.resume()
     }
     
-//    private func iniMapViewMarker(_ storeMapInfo: [MarkerData]) {
-//        storeMapInfo
-//            .map{ MyMaker(markerData: $0) }
-//            .forEach {
-//                let item = ClusterItem(markerData: $0.markerData)
-//                self.clusterManager.add(item)
-//            }
-//        self.clusterManager.cluster()
-//    }
-
+    
+    @IBSegueAction func changeToStoreInfoDeailSegue(_ coder: NSCoder) -> MapDetailViewController? {
+        
+        let indexPath = tableView.indexPathForSelectedRow?.row
+        
+        let storeName = storeInfo[indexPath!].name
+        let storeAddress = storeInfo[indexPath!].vicinity
+        let lat = Double(storeInfo[indexPath!].geometry.location.lat)
+        let lng = Double(storeInfo[indexPath!].geometry.location.lng)
+        
+        let controller = MapDetailViewController(coder: coder)
+        controller?.storeMapDeatilInfo = ChangeToStoreInfoDetail(storeName: storeName, storeAddress: storeAddress, lat: lat, lng: lng)
+        return controller
+    }
+    
     // MARK: - Table view data source
     
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
@@ -99,24 +111,19 @@ class StoreInfoTableViewController: UITableViewController {
         cell.storeNameLabel.text = storeInfo[indexPath.row].name
         cell.storeAddressLabel.text = storeInfo[indexPath.row].vicinity
         
-        //每一個Cell顯示地圖 台中火車站： 24.13756675158458, 120.68686756709918
-        let camera = GMSCameraPosition.camera(withLatitude: 24.13, longitude: 120.68, zoom: 13.0)
-        let mapView = GMSMapView.map(withFrame: self.view.frame, camera: camera)
-//        cell.mapView.delegate = self
-        cell.mapView.isMyLocationEnabled = true
-        cell.mapView.addSubview(mapView)
+        //每一個Cell顯示地圖，以每家店為中心顯示地圖
+        let location = CLLocation(latitude: storeInfo[indexPath.row].geometry.location.lat, longitude: storeInfo[indexPath.row].geometry.location.lng)
+        let region = MKCoordinateRegion(center: location.coordinate, latitudinalMeters: 250, longitudinalMeters: 250)
+        cell.mapView.setRegion(region, animated: true)
         
-        let marker = GMSMarker()
-            marker.position = CLLocationCoordinate2DMake(24.13, 120.68)
-            marker.title = "Sydney"
-            marker.snippet = "Australia"
-            marker.map = mapView
+        let storeLocation = MKPointAnnotation()
+        storeLocation.title = "\(storeInfo[indexPath.row].name)"
+        storeLocation.coordinate = CLLocationCoordinate2D(latitude: storeInfo[indexPath.row].geometry.location.lat, longitude: storeInfo[indexPath.row].geometry.location.lng)
+        cell.mapView.addAnnotation(storeLocation)
         
         cell.mapView.clipsToBounds = true
         cell.mapView.layer.cornerRadius = 5
         
-        
-
         return cell
     }
     
@@ -166,8 +173,4 @@ class StoreInfoTableViewController: UITableViewController {
     }
     */
 
-}
-
-extension StoreInfoTableViewController: GMSMapViewDelegate {
-    
 }

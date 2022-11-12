@@ -18,8 +18,7 @@ class OrderListTableViewCell: UITableViewCell {
     @IBOutlet weak var orderInfoSugarDegreeLabel: UILabel!
     @IBOutlet weak var orderInfoOrderTimeLabel: UILabel!
     @IBOutlet weak var orderInfoCommentTextView: UITextView!
-    @IBOutlet weak var orderInfoPriceHiddenLabel: UILabel!
-    
+    @IBOutlet weak var orderInfoStoreNameLabel: UILabel!
     
     override func awakeFromNib() {
         super.awakeFromNib()

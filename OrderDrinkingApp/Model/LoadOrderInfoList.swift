@@ -26,5 +26,6 @@ struct LoadOrderInfoList: Codable {
         var userName: String
         var userPhone: String
         var totalAmount: Int
+        var storeName: String
     }
 }

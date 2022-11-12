@@ -19,6 +19,7 @@ class IndexViewController: UIViewController {
           // 將我們的 view 指定為 webView
           view = webView
       }
+    
       override func viewDidLoad() {
           super.viewDidLoad()
           // 讀取來自 URL 的網頁

@@ -17,4 +17,5 @@ struct ChangeToUpdateOrderInfo {
     var sugarDegreen: String
     var comment: String
     var price: Int
+    var storeName: String
 }
